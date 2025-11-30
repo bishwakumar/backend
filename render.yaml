@@ -4,10 +4,8 @@ services:
     env: node
     region: oregon
     plan: free
-    # Build command only runs the build script; dependencies are installed automatically
-    buildCommand: npm run build
-    # Start command points to compiled JS in dist/
-    startCommand: npm run start:prod
+    buildCommand: NODE_ENV=development npm install && npm run build
+    startCommand: ./start.sh
     envVars:
       - key: NODE_ENV
         value: production
@@ -16,8 +14,5 @@ services:
           type: web
           name: backend
           property: port
-      # Add any other environment variables below
-      - key: DATABASE_URL
-        value: your_database_url_here
-      - key: REDIS_URL
-        value: your_redis_url_here
+      # Add your other environment variables in Render dashboard
+
