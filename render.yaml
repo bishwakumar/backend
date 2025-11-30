@@ -4,8 +4,9 @@ services:
     env: node
     region: oregon
     plan: free
-    buildCommand: NODE_ENV=development npm install && npm run build
-    startCommand: npm run start:prod
+    rootDir: .
+    buildCommand: npm install && npm run build && test -f dist/main.js || (echo "Build failed: dist/main.js not found" && exit 1)
+    startCommand: node dist/main.js
     envVars:
       - key: NODE_ENV
         value: production
