@@ -7,7 +7,7 @@
     "node": "20.x"
   },
   "scripts": {
-    "build": "nest build",
+    "build": "npxnest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -21,6 +21,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@nestjs/cli": "^9.5.0",
     "@nestjs/apollo": "^10.2.0",
     "@nestjs/common": "^9.0.0",
     "@nestjs/core": "^9.0.0",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^9.5.0",
+    "typescript": "^4.7.4",
     "@nestjs/schematics": "^9.0.0",
     "@nestjs/testing": "^9.0.0",
     "@types/bcrypt": "^5.0.2",
@@ -68,7 +70,6 @@
     "ts-jest": "29.0.3",
     "ts-loader": "^9.2.3",
     "ts-node": "^10.0.0",
-    "tsconfig-paths": "4.1.1",
-    "typescript": "^4.7.4"
+    "tsconfig-paths": "4.1.1"
   }
 }
