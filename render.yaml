@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: NODE_ENV=development npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        fromService:
+          type: web
+          name: backend
+          property: port
+      # Add your other environment variables in Render dashboard
+
