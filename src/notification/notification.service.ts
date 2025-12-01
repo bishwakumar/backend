@@ -1,12 +1,13 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
-import { Redis } from 'ioredis';
+import { Redis, RedisOptions } from 'ioredis';
 import { PubSub } from 'graphql-subscriptions';
 import { Blog } from '../blog/entities/blog.entity';
 import { NotificationMarker } from './entities/notification-marker.entity';
 import { UserNotificationState } from './entities/user-notification-state.entity';
 import { User } from '../auth/entities/user.entity';
+import { getRedisConfig } from '../config/redis.config';
 
 @Injectable()
 export class NotificationService implements OnModuleInit, OnModuleDestroy {
@@ -26,14 +27,13 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     // Initialize PubSub for GraphQL subscriptions
     this.pubSub = new PubSub();
 
-    // Initialize Redis client for publishing (separate connection)
-    // Note: Must be separate from subscriber connection
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD || undefined,
-      enableReadyCheck: false, // Disable ready check to avoid subscriber mode conflicts
-      maxRetriesPerRequest: null, // Disable retries for publisher
+    // Get base Redis configuration from environment variables
+    const baseRedisConfig = getRedisConfig();
+    
+    // Common Redis options for both publisher and subscriber
+    const commonOptions: RedisOptions = {
+      enableReadyCheck: false,
+      maxRetriesPerRequest: null,
       retryStrategy: (times) => {
         // Retry with exponential backoff, max 30 seconds
         const delay = Math.min(times * 50, 30000);
@@ -47,30 +47,33 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         }
         return false;
       },
-    });
+    };
+
+    // Initialize Redis client for publishing (separate connection)
+    // Note: Must be separate from subscriber connection
+    if (typeof baseRedisConfig === 'string') {
+      // Connection string provided
+      this.redis = new Redis(baseRedisConfig, commonOptions);
+    } else {
+      // Options object provided
+      this.redis = new Redis({
+        ...baseRedisConfig,
+        ...commonOptions,
+      });
+    }
 
     // Initialize Redis client for subscribing (separate connection)
     // This connection will be in subscriber mode
-    this.redisSubscriber = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD || undefined,
-      enableReadyCheck: false, // Disable ready check
-      maxRetriesPerRequest: null, // Disable retries for subscriber
-      retryStrategy: (times) => {
-        // Retry with exponential backoff, max 30 seconds
-        const delay = Math.min(times * 50, 30000);
-        return delay;
-      },
-      reconnectOnError: (err) => {
-        // Reconnect on specific errors
-        const targetError = 'READONLY';
-        if (err.message.includes(targetError)) {
-          return true;
-        }
-        return false;
-      },
-    });
+    if (typeof baseRedisConfig === 'string') {
+      // Connection string provided
+      this.redisSubscriber = new Redis(baseRedisConfig, commonOptions);
+    } else {
+      // Options object provided
+      this.redisSubscriber = new Redis({
+        ...baseRedisConfig,
+        ...commonOptions,
+      });
+    }
 
     // Handle errors
     this.redis.on('error', (err) => {

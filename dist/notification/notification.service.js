@@ -21,6 +21,7 @@ const graphql_subscriptions_1 = require("graphql-subscriptions");
 const notification_marker_entity_1 = require("./entities/notification-marker.entity");
 const user_notification_state_entity_1 = require("./entities/user-notification-state.entity");
 const user_entity_1 = require("../auth/entities/user.entity");
+const redis_config_1 = require("../config/redis.config");
 let NotificationService = class NotificationService {
     constructor(markerRepository, userStateRepository, userRepository) {
         this.markerRepository = markerRepository;
@@ -28,10 +29,8 @@ let NotificationService = class NotificationService {
         this.userRepository = userRepository;
         this.NOTIFICATION_CHANNEL = 'new_blog_notifications';
         this.pubSub = new graphql_subscriptions_1.PubSub();
-        this.redis = new ioredis_1.Redis({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
-            password: process.env.REDIS_PASSWORD || undefined,
+        const baseRedisConfig = (0, redis_config_1.getRedisConfig)();
+        const commonOptions = {
             enableReadyCheck: false,
             maxRetriesPerRequest: null,
             retryStrategy: (times) => {
@@ -45,25 +44,19 @@ let NotificationService = class NotificationService {
                 }
                 return false;
             },
-        });
-        this.redisSubscriber = new ioredis_1.Redis({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
-            password: process.env.REDIS_PASSWORD || undefined,
-            enableReadyCheck: false,
-            maxRetriesPerRequest: null,
-            retryStrategy: (times) => {
-                const delay = Math.min(times * 50, 30000);
-                return delay;
-            },
-            reconnectOnError: (err) => {
-                const targetError = 'READONLY';
-                if (err.message.includes(targetError)) {
-                    return true;
-                }
-                return false;
-            },
-        });
+        };
+        if (typeof baseRedisConfig === 'string') {
+            this.redis = new ioredis_1.Redis(baseRedisConfig, commonOptions);
+        }
+        else {
+            this.redis = new ioredis_1.Redis(Object.assign(Object.assign({}, baseRedisConfig), commonOptions));
+        }
+        if (typeof baseRedisConfig === 'string') {
+            this.redisSubscriber = new ioredis_1.Redis(baseRedisConfig, commonOptions);
+        }
+        else {
+            this.redisSubscriber = new ioredis_1.Redis(Object.assign(Object.assign({}, baseRedisConfig), commonOptions));
+        }
         this.redis.on('error', (err) => {
             console.error('Redis publisher error:', err);
         });

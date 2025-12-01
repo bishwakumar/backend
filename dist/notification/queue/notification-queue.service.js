@@ -12,20 +12,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.NotificationQueueService = void 0;
 const common_1 = require("@nestjs/common");
 const ioredis_1 = require("ioredis");
+const redis_config_1 = require("../../config/redis.config");
 let NotificationQueueService = class NotificationQueueService {
     constructor() {
         this.QUEUE_NAME = 'blog_created_events';
-        this.redis = new ioredis_1.Redis({
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379'),
-            password: process.env.REDIS_PASSWORD || undefined,
+        const baseRedisConfig = (0, redis_config_1.getRedisConfig)();
+        const commonOptions = {
             enableReadyCheck: false,
             maxRetriesPerRequest: null,
             retryStrategy: (times) => {
                 const delay = Math.min(times * 50, 30000);
                 return delay;
             },
-        });
+        };
+        if (typeof baseRedisConfig === 'string') {
+            this.redis = new ioredis_1.Redis(baseRedisConfig, commonOptions);
+        }
+        else {
+            this.redis = new ioredis_1.Redis(Object.assign(Object.assign({}, baseRedisConfig), commonOptions));
+        }
         this.redis.on('error', (err) => {
             console.error('Notification Queue Redis error:', err);
         });

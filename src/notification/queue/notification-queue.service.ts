@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Redis } from 'ioredis';
+import { Redis, RedisOptions } from 'ioredis';
+import { getRedisConfig } from '../../config/redis.config';
 
 export interface BlogCreatedEvent {
   blogId: string;
@@ -14,17 +15,30 @@ export class NotificationQueueService implements OnModuleInit {
   private readonly QUEUE_NAME = 'blog_created_events';
 
   constructor() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD || undefined,
+    // Get base Redis configuration from environment variables
+    const baseRedisConfig = getRedisConfig();
+    
+    // Common Redis options
+    const commonOptions: RedisOptions = {
       enableReadyCheck: false,
       maxRetriesPerRequest: null,
       retryStrategy: (times) => {
         const delay = Math.min(times * 50, 30000);
         return delay;
       },
-    });
+    };
+
+    // Initialize Redis client
+    if (typeof baseRedisConfig === 'string') {
+      // Connection string provided
+      this.redis = new Redis(baseRedisConfig, commonOptions);
+    } else {
+      // Options object provided
+      this.redis = new Redis({
+        ...baseRedisConfig,
+        ...commonOptions,
+      });
+    }
 
     this.redis.on('error', (err) => {
       console.error('Notification Queue Redis error:', err);
